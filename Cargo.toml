@@ -13,6 +13,8 @@ license = "Apache-2.0 AND BSD-3-Clause"
 with-serde = ["serde", "serde_derive"]
 
 [dependencies]
+bitflags = "1.3.2"
+kqueue = { git = "https://gitlab.com/slp/rust-kqueue.git", branch = "multithread-support" }
 libc = ">=0.2.39"
 serde = { version = ">=1.0.27", optional = true }
 serde_derive = { version = ">=1.0.27", optional = true }

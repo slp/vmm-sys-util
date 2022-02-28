@@ -4,7 +4,7 @@
 //! Collection of modules that provides helpers and utilities used by multiple
 //! [rust-vmm](https://github.com/rust-vmm/community) components.
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -15,6 +15,11 @@ pub use crate::linux::*;
 mod unix;
 #[cfg(unix)]
 pub use crate::unix::*;
+
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+pub use crate::macos::*;
 
 pub mod errno;
 pub mod fam;
