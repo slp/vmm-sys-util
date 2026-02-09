@@ -24,7 +24,9 @@ use std::fmt::{self, Display};
 use std::io;
 use std::mem;
 use std::os::unix::thread::JoinHandleExt;
-use std::ptr::{null, null_mut};
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use std::ptr::null;
+use std::ptr::null_mut;
 use std::result;
 use std::thread::JoinHandle;
 
@@ -90,6 +92,7 @@ pub type SignalResult<T> = result::Result<T, Error>;
 pub type SignalHandler =
     extern "C" fn(num: c_int, info: *mut siginfo_t, _unused: *mut c_void) -> ();
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 extern "C" {
     fn __libc_current_sigrtmin() -> c_int;
     fn __libc_current_sigrtmax() -> c_int;
@@ -97,6 +100,7 @@ extern "C" {
 
 /// Return the minimum (inclusive) real-time signal number.
 #[allow(non_snake_case)]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn SIGRTMIN() -> c_int {
     // SAFETY: We trust this libc function.
     unsafe { __libc_current_sigrtmin() }
@@ -104,6 +108,7 @@ pub fn SIGRTMIN() -> c_int {
 
 /// Return the maximum (inclusive) real-time signal number.
 #[allow(non_snake_case)]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn SIGRTMAX() -> c_int {
     // SAFETY: We trust this libc function.
     unsafe { __libc_current_sigrtmax() }
@@ -126,6 +131,7 @@ pub fn SIGRTMAX() -> c_int {
 ///
 /// let num = validate_signal_num(1).unwrap();
 /// ```
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn validate_signal_num(num: c_int) -> errno::Result<()> {
     if (libc::SIGHUP..=libc::SIGSYS).contains(&num) || (SIGRTMIN() <= num && num <= SIGRTMAX()) {
         Ok(())
@@ -159,6 +165,7 @@ pub fn validate_signal_num(num: c_int) -> errno::Result<()> {
 /// register_signal_handler(0, handle_signal);
 /// ```
 pub fn register_signal_handler(num: c_int, handler: SignalHandler) -> errno::Result<()> {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     validate_signal_num(num)?;
 
     // signum specifies the signal and can be any valid signal except
@@ -248,6 +255,7 @@ pub fn create_sigset(signals: &[c_int]) -> errno::Result<sigset_t> {
 /// block_signal(1).unwrap();
 /// assert!(get_blocked_signals().unwrap().contains(&(1)));
 /// ```
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn get_blocked_signals() -> SignalResult<Vec<c_int>> {
     let mut mask = Vec::new();
 
@@ -445,6 +453,7 @@ pub unsafe trait Killable {
     ///
     /// * `num`: specify the signal
     fn kill(&self, num: c_int) -> errno::Result<()> {
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         validate_signal_num(num)?;
 
         // SAFETY: Safe because we ensure we are using a valid pthread handle,
@@ -497,14 +506,18 @@ mod tests {
         // testing bad value
         assert!(register_signal_handler(libc::SIGKILL, handle_signal).is_err());
         assert!(register_signal_handler(libc::SIGSTOP, handle_signal).is_err());
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         assert!(register_signal_handler(SIGRTMAX() + 1, handle_signal).is_err());
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         assert!(register_signal_handler(SIGRTMAX(), handle_signal).is_ok());
+        #[cfg(any(target_os = "linux", target_os = "android"))]
         assert!(register_signal_handler(SIGRTMIN(), handle_signal).is_ok());
         assert!(register_signal_handler(libc::SIGSYS, handle_signal).is_ok());
     }
 
     #[test]
     #[allow(clippy::empty_loop)]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn test_killing_thread() {
         let killable = thread::spawn(|| thread::current().id());
         let killable_id = killable.join().unwrap();
@@ -549,6 +562,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn test_block_unblock_signal() {
         let signal = SIGRTMIN();
 
@@ -567,6 +581,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn test_clear_pending() {
         let signal = SIGRTMIN() + 1;
 
