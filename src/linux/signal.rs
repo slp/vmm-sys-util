@@ -9,11 +9,15 @@
 //! Enums, traits and functions for working with
 //! [`signal`](http://man7.org/linux/man-pages/man7/signal.7.html).
 
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+use libc::sigwait;
 use libc::{
     c_int, c_void, pthread_kill, pthread_sigmask, pthread_t, sigaction, sigaddset, sigemptyset,
-    sigfillset, siginfo_t, sigismember, sigpending, sigset_t, sigtimedwait, timespec, EAGAIN,
-    EINTR, EINVAL, SIG_BLOCK, SIG_UNBLOCK,
+    sigfillset, siginfo_t, sigismember, sigpending, sigset_t, EAGAIN, EINTR, EINVAL, SIG_BLOCK,
+    SIG_UNBLOCK,
 };
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use libc::{sigtimedwait, timespec};
 
 use crate::errno;
 use std::fmt::{self, Display};
@@ -372,14 +376,23 @@ pub fn clear_signal(num: c_int) -> SignalResult<()> {
         // SAFETY: This is safe as we are rigorously checking return values
         // of libc calls.
         unsafe {
-            let mut siginfo: siginfo_t = mem::zeroed();
-            let ts = timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            let ret = {
+                let mut siginfo: siginfo_t = mem::zeroed();
+                let ts = timespec {
+                    tv_sec: 0,
+                    tv_nsec: 0,
+                };
+                // Attempt to consume one instance of pending signal. If signal
+                // is not pending, the call will fail with EAGAIN or EINTR.
+                sigtimedwait(&sigset, &mut siginfo, &ts)
             };
-            // Attempt to consume one instance of pending signal. If signal
-            // is not pending, the call will fail with EAGAIN or EINTR.
-            let ret = sigtimedwait(&sigset, &mut siginfo, &ts);
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
+            let ret = {
+                let mut sig: c_int = 0;
+                sigwait(&sigset, &mut sig)
+            };
+
             if ret < 0 {
                 let e = errno::Error::last();
                 match e.errno() {
