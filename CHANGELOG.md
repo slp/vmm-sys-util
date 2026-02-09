@@ -6,6 +6,10 @@
 
 - [[#254](https://github.com/rust-vmm/vmm-sys-util/pull/254)]: Support `TFD_NONBLOCK` for `timerfd::TimerFd`.
 
+### Changed
+
+- [[#263](https://github.com/rust-vmm/vmm-sys-util/pull/263)]: Generalize signal.rs to be used on non-Linux systems
+
 ## v0.15.0
 
 ### Added
